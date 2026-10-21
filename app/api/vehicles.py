@@ -2,12 +2,11 @@
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from app.repositories.vehicle_repository import VehicleRepository
-from app.core.security import require_api_key
 from app.services.movement_service import VehicleNotFoundError
 from app.services.vehicle_service import VehicleService
 
@@ -34,7 +33,7 @@ async def list_vehicles(request: Request) -> list[dict[str, Any]]:
     return await run_in_threadpool(_service(request).list_vehicles)
 
 
-@router.post("", status_code=status.HTTP_201_CREATED, summary="Crear vehículo", description="Stored Procedures: `sp_crear_vehiculo` y `sp_obtener_vehiculo` para devolver el recurso creado.", dependencies=[Depends(require_api_key)])
+@router.post("", status_code=status.HTTP_201_CREATED, summary="Crear vehículo", description="Stored Procedures: `sp_crear_vehiculo` y `sp_obtener_vehiculo` para devolver el recurso creado.")
 async def create_vehicle(payload: VehicleCreate, request: Request) -> dict[str, Any]:
     return await run_in_threadpool(
         _service(request).create_vehicle,
@@ -53,7 +52,7 @@ async def get_vehicle(vehicle_id: int, request: Request) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail="Vehículo no encontrado") from exc
 
 
-@router.put("/{vehicle_id}", summary="Actualizar vehículo", description="Stored Procedures: `sp_obtener_vehiculo` para validar y leer, `sp_actualizar_vehiculo` para modificar y `sp_obtener_vehiculo` para devolver el resultado.", dependencies=[Depends(require_api_key)])
+@router.post("/{vehicle_id}/update", summary="Actualizar vehículo", description="Stored Procedures: `sp_obtener_vehiculo` para validar y leer, `sp_actualizar_vehiculo` para modificar y `sp_obtener_vehiculo` para devolver el resultado.")
 async def update_vehicle(
     vehicle_id: int, payload: VehicleUpdate, request: Request
 ) -> dict[str, Any]:
@@ -71,7 +70,7 @@ async def update_vehicle(
         raise HTTPException(status_code=404, detail="Vehículo no encontrado") from exc
 
 
-@router.delete("/{vehicle_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar vehículo", description="Stored Procedures: `sp_obtener_vehiculo` para validar y `sp_eliminar_vehiculo` para eliminar.", dependencies=[Depends(require_api_key)])
+@router.post("/{vehicle_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar vehículo", description="Stored Procedures: `sp_obtener_vehiculo` para validar y `sp_eliminar_vehiculo` para eliminar.")
 async def delete_vehicle(vehicle_id: int, request: Request) -> Response:
     try:
         await run_in_threadpool(_service(request).delete_vehicle, vehicle_id)

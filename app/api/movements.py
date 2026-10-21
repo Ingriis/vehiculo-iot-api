@@ -1,12 +1,11 @@
 """Endpoints de movimientos individuales."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from app.repositories.vehicle_repository import VehicleRepository
-from app.core.security import require_api_key
 from app.services.movement_service import (
     CommandNotFoundError,
     InactiveCommandError,
@@ -26,7 +25,7 @@ def _repository(request: Request) -> VehicleRepository:
     return request.app.state.repository
 
 
-@router.post("/{vehicle_id}/movements", status_code=201, summary="Registrar movimiento", description="Stored Procedures: `sp_obtener_vehiculo`, `sp_obtener_comandos_vehiculo` y `sp_obtener_estado` para validar/leer; `sp_actualizar_estado` y `sp_registrar_historial` dentro de una transacción. Notifica por WebSocket después del commit.", dependencies=[Depends(require_api_key)])
+@router.post("/{vehicle_id}/movements", status_code=201, summary="Registrar movimiento", description="Stored Procedures: `sp_obtener_vehiculo`, `sp_obtener_comandos_vehiculo` y `sp_obtener_estado` para validar/leer; `sp_actualizar_estado` y `sp_registrar_historial` dentro de una transacción. Notifica por WebSocket después del commit.")
 async def register_movement(
     vehicle_id: int, payload: MovementRequest, request: Request
 ) -> dict:

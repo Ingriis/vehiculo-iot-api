@@ -3,12 +3,11 @@
 from typing import Any
 
 import pymysql
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from app.services.command_service import CommandService
-from app.core.security import require_api_key
 from app.services.movement_service import CommandNotFoundError, VehicleNotFoundError
 
 router = APIRouter(prefix="/vehicles/{vehicle_id}/commands", tags=["Comandos"])
@@ -49,7 +48,7 @@ async def list_commands(vehicle_id: int, request: Request) -> list[dict[str, Any
         raise _raise_not_found(exc) from exc
 
 
-@router.post("", status_code=status.HTTP_201_CREATED, summary="Crear comando", description="Stored Procedures: `sp_obtener_vehiculo` para validar; `sp_crear_comando` para crear; `sp_obtener_comandos_vehiculo` para devolver el comando creado.", dependencies=[Depends(require_api_key)])
+@router.post("", status_code=status.HTTP_201_CREATED, summary="Crear comando", description="Stored Procedures: `sp_obtener_vehiculo` para validar; `sp_crear_comando` para crear; `sp_obtener_comandos_vehiculo` para devolver el comando creado.")
 async def create_command(
     vehicle_id: int, payload: CommandCreate, request: Request
 ) -> dict[str, Any]:
@@ -67,7 +66,7 @@ async def create_command(
         raise _raise_conflict(exc) from exc
 
 
-@router.put("/{command_id}", summary="Actualizar comando", description="Stored Procedures: `sp_obtener_vehiculo` y `sp_obtener_comandos_vehiculo` para validar; `sp_actualizar_comando` para modificar; `sp_obtener_comandos_vehiculo` para devolver el resultado.", dependencies=[Depends(require_api_key)])
+@router.post("/{command_id}/update", summary="Actualizar comando", description="Stored Procedures: `sp_obtener_vehiculo` y `sp_obtener_comandos_vehiculo` para validar; `sp_actualizar_comando` para modificar; `sp_obtener_comandos_vehiculo` para devolver el resultado.")
 async def update_command(
     vehicle_id: int, command_id: int, payload: CommandUpdate, request: Request
 ) -> dict[str, Any]:
@@ -87,7 +86,7 @@ async def update_command(
         raise _raise_conflict(exc) from exc
 
 
-@router.delete("/{command_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar comando", description="Stored Procedures: `sp_obtener_vehiculo` y `sp_obtener_comandos_vehiculo` para validar; `sp_eliminar_comando` para eliminar.", dependencies=[Depends(require_api_key)])
+@router.post("/{command_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar comando", description="Stored Procedures: `sp_obtener_vehiculo` y `sp_obtener_comandos_vehiculo` para validar; `sp_eliminar_comando` para eliminar.")
 async def delete_command(
     vehicle_id: int, command_id: int, request: Request
 ) -> Response:

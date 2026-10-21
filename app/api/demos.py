@@ -4,12 +4,11 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from app.repositories.vehicle_repository import VehicleRepository
-from app.core.security import require_api_key
 from app.services.movement_service import VehicleNotFoundError
 from app.services.vehicle_query_service import (
     DemoNotFoundError,
@@ -48,7 +47,6 @@ async def _wait_or_cancel(cancellation: asyncio.Event, milliseconds: int) -> boo
     response_model=DemoRunResponse,
     summary="Ejecutar demo",
     description="Stored Procedures: `sp_obtener_vehiculo`, `sp_obtener_demos`, `sp_obtener_movimientos_demo` y `sp_obtener_comandos_vehiculo` para validar/cargar la secuencia; `sp_obtener_estado` y `sp_actualizar_estado` por paso. No llama a `sp_registrar_historial`.",
-    dependencies=[Depends(require_api_key)],
 )
 async def run_demo(
     vehicle_id: int, demo_id: int, request: Request

@@ -3,12 +3,11 @@
 from typing import Any
 
 import pymysql
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from app.services.demo_admin_service import DemoAdminService, DemoMovementNotFoundError
-from app.core.security import require_api_key
 from app.services.movement_service import CommandNotFoundError, VehicleNotFoundError
 from app.services.vehicle_query_service import DemoNotFoundError
 
@@ -66,7 +65,7 @@ async def list_demos(vehicle_id: int, request: Request) -> list[dict[str, Any]]:
         raise _not_found(exc) from exc
 
 
-@router.post("", tags=["Demos"], status_code=status.HTTP_201_CREATED, summary="Crear demo", description="Stored Procedures: `sp_obtener_vehiculo` para validar; `sp_crear_demo` para crear; `sp_obtener_demos` para devolverla.", dependencies=[Depends(require_api_key)])
+@router.post("", tags=["Demos"], status_code=status.HTTP_201_CREATED, summary="Crear demo", description="Stored Procedures: `sp_obtener_vehiculo` para validar; `sp_crear_demo` para crear; `sp_obtener_demos` para devolverla.")
 async def create_demo(
     vehicle_id: int, payload: DemoCreate, request: Request
 ) -> dict[str, Any]:
@@ -81,7 +80,7 @@ async def create_demo(
         raise _not_found(exc) from exc
 
 
-@router.put("/{demo_id}", tags=["Demos"], summary="Actualizar demo", description="Stored Procedures: `sp_obtener_vehiculo` y `sp_obtener_demos` para validar; `sp_actualizar_demo` para modificar; `sp_obtener_demos` para devolver el resultado.", dependencies=[Depends(require_api_key)])
+@router.post("/{demo_id}/update", tags=["Demos"], summary="Actualizar demo", description="Stored Procedures: `sp_obtener_vehiculo` y `sp_obtener_demos` para validar; `sp_actualizar_demo` para modificar; `sp_obtener_demos` para devolver el resultado.")
 async def update_demo(
     vehicle_id: int, demo_id: int, payload: DemoUpdate, request: Request
 ) -> dict[str, Any]:
@@ -98,7 +97,7 @@ async def update_demo(
         raise _not_found(exc) from exc
 
 
-@router.delete("/{demo_id}", tags=["Demos"], status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar demo", description="Stored Procedures: `sp_obtener_vehiculo` y `sp_obtener_demos` para validar; `sp_eliminar_demo` para eliminar.", dependencies=[Depends(require_api_key)])
+@router.post("/{demo_id}", tags=["Demos"], status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar demo", description="Stored Procedures: `sp_obtener_vehiculo` y `sp_obtener_demos` para validar; `sp_eliminar_demo` para eliminar.")
 async def delete_demo(vehicle_id: int, demo_id: int, request: Request) -> Response:
     try:
         await run_in_threadpool(_service(request).delete_demo, vehicle_id, demo_id)
@@ -125,7 +124,6 @@ async def list_demo_movements(
     status_code=status.HTTP_201_CREATED,
     summary="Agregar paso a una demo",
     description="Stored Procedures: `sp_obtener_vehiculo`, `sp_obtener_demos` y `sp_obtener_comandos_vehiculo` para validar; `sp_agregar_movimiento_demo` para agregar; `sp_obtener_movimientos_demo` para devolver la lista actualizada.",
-    dependencies=[Depends(require_api_key)],
 )
 async def add_demo_movement(
     vehicle_id: int,
@@ -149,8 +147,8 @@ async def add_demo_movement(
         raise _conflict(exc) from exc
 
 
-@router.put(
-    "/{demo_id}/movements/{movement_id}", tags=["Movimientos de demo"], summary="Actualizar paso de una demo", description="Stored Procedures: `sp_obtener_vehiculo`, `sp_obtener_demos`, `sp_obtener_movimientos_demo` y `sp_obtener_comandos_vehiculo` para validar; `sp_actualizar_movimiento_demo` para modificar; `sp_obtener_movimientos_demo` para devolver el resultado.", dependencies=[Depends(require_api_key)]
+@router.post(
+    "/{demo_id}/movements/{movement_id}/update", tags=["Movimientos de demo"], summary="Actualizar paso de una demo", description="Stored Procedures: `sp_obtener_vehiculo`, `sp_obtener_demos`, `sp_obtener_movimientos_demo` y `sp_obtener_comandos_vehiculo` para validar; `sp_actualizar_movimiento_demo` para modificar; `sp_obtener_movimientos_demo` para devolver el resultado."
 )
 async def update_demo_movement(
     vehicle_id: int,
@@ -181,13 +179,12 @@ async def update_demo_movement(
         raise _conflict(exc) from exc
 
 
-@router.delete(
+@router.post(
     "/{demo_id}/movements/{movement_id}",
     tags=["Movimientos de demo"],
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar paso de una demo",
     description="Stored Procedures: `sp_obtener_vehiculo`, `sp_obtener_demos` y `sp_obtener_movimientos_demo` para validar; `sp_eliminar_movimiento_demo` para eliminar.",
-    dependencies=[Depends(require_api_key)],
 )
 async def delete_demo_movement(
     vehicle_id: int, demo_id: int, movement_id: int, request: Request
