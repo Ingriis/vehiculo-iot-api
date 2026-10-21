@@ -2,6 +2,11 @@
 
 API local para administrar vehículos, comandos y demos, registrar movimientos y recibir actualizaciones por WebSocket.
 
+
+## Apuntes de las 21 APIs
+
+![Apuntes de las 21 APIs](docs/images/21-apis-iot.png)
+
 ## Preparar y ejecutar
 
 En PowerShell, desde esta carpeta:
