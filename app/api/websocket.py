@@ -52,3 +52,11 @@ async def vehicle_updates(websocket: WebSocket, vehicle_id: int) -> None:
         pass
     finally:
         manager.disconnect(vehicle_id, websocket)
+
+@router.get("/ws/info", summary="Información del canal WebSocket WSS en tiempo real", tags=["Tiempo real"])
+async def websocket_info() -> dict:
+    return {
+        "protocol": "WSS / WS",
+        "url_template": "wss://vehiculo-iot-ingrid.duckdns.org/ws/vehicles/{vehicle_id}",
+        "description": "Canal bidireccional para telemetría, ping/pong y comandos en tiempo real por vehículo."
+    }

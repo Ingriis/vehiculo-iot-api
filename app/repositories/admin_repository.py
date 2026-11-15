@@ -13,9 +13,10 @@ class AdminRepository:
         self._engine = engine
 
     def _execute_query(self, sql: str, params: Sequence[Any] = ()) -> list[dict[str, Any]]:
-        with self._engine.connect() as conn:
-            raw_conn = conn.connection
-            cursor = raw_conn.cursor()
+        raw_conn = self._engine.raw_connection()
+        try:
+            dbapi_conn = getattr(raw_conn, 'driver_connection', raw_conn)
+            cursor = dbapi_conn.cursor()
             try:
                 cursor.execute(sql, tuple(params))
                 if cursor.description:
@@ -24,22 +25,30 @@ class AdminRepository:
                 return []
             finally:
                 cursor.close()
+        finally:
+            raw_conn.close()
 
     def _execute_commit(self, sql: str, params: Sequence[Any] = ()) -> int:
-        with self._engine.connect() as conn:
-            raw_conn = conn.connection
-            cursor = raw_conn.cursor()
+        raw_conn = self._engine.raw_connection()
+        try:
+            dbapi_conn = getattr(raw_conn, 'driver_connection', raw_conn)
+            cursor = dbapi_conn.cursor()
             try:
-                raw_conn.begin()
+                if hasattr(dbapi_conn, 'begin'):
+                    dbapi_conn.begin()
                 cursor.execute(sql, tuple(params))
                 last_id = cursor.lastrowid
-                raw_conn.commit()
+                if hasattr(dbapi_conn, 'commit'):
+                    dbapi_conn.commit()
                 return last_id
             except Exception:
-                raw_conn.rollback()
+                if hasattr(dbapi_conn, 'rollback'):
+                    dbapi_conn.rollback()
                 raise
             finally:
                 cursor.close()
+        finally:
+            raw_conn.close()
 
     # -------------------------------------------------------------------------
     # Salud de Amazon RDS
@@ -73,7 +82,7 @@ class AdminRepository:
         FROM usuarios u
         LEFT JOIN vehiculos v ON v.propietario_id = u.id_usuario
         WHERE u.rol = 'USUARIO'
-        GROUP BY u.id_usuario
+        GROUP BY u.id_usuario, u.username, u.email, u.nombre_completo, u.rol, u.activo, u.creado_en
         ORDER BY u.nombre_completo ASC
         """
         return self._execute_query(sql)
@@ -94,7 +103,7 @@ class AdminRepository:
                COUNT(v.id_vehiculo) AS total_unidades
         FROM modelos_vehiculo m
         LEFT JOIN vehiculos v ON v.id_modelo = m.id_modelo
-        GROUP BY m.id_modelo
+        GROUP BY m.id_modelo, m.nombre, m.codigo_modelo, m.descripcion, m.categoria, m.imagen_url, m.activo
         ORDER BY m.id_modelo ASC
         """
         return self._execute_query(sql)
