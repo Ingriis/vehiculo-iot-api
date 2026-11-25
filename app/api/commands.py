@@ -1,12 +1,14 @@
 """Endpoints CRUD para los comandos asociados a un vehículo."""
 
-from typing import Any
+from typing import Annotated, Any
 
 import pymysql
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
+from app.core.dependencies import get_admin_repository, require_roles, verify_vehicle_authorization
+from app.repositories.admin_repository import AdminRepository
 from app.services.command_service import CommandService
 from app.services.movement_service import CommandNotFoundError, VehicleNotFoundError
 
@@ -20,6 +22,10 @@ class CommandCreate(BaseModel):
 
 
 class CommandUpdate(CommandCreate):
+    activo: bool
+
+
+class CommandEnabled(BaseModel):
     activo: bool
 
 
@@ -68,7 +74,11 @@ async def create_command(
 
 @router.post("/{command_id}/update", summary="Actualizar comando", description="Stored Procedures: `sp_obtener_vehiculo` y `sp_obtener_comandos_vehiculo` para validar; `sp_actualizar_comando` para modificar; `sp_obtener_comandos_vehiculo` para devolver el resultado.")
 async def update_command(
-    vehicle_id: int, command_id: int, payload: CommandUpdate, request: Request
+    vehicle_id: int,
+    command_id: int,
+    payload: CommandUpdate,
+    request: Request,
+    current_user: Annotated[dict, Depends(require_roles(["ADMINISTRADOR"]))],
 ) -> dict[str, Any]:
     try:
         return await run_in_threadpool(
@@ -80,6 +90,48 @@ async def update_command(
             payload.descripcion,
             payload.activo,
         )
+    except (VehicleNotFoundError, CommandNotFoundError) as exc:
+        raise _raise_not_found(exc) from exc
+    except pymysql.err.IntegrityError as exc:
+        raise _raise_conflict(exc) from exc
+
+
+@router.post("/{command_id}/enabled", summary="Activar o desactivar un comando propio")
+async def set_command_enabled(
+    vehicle_id: int,
+    command_id: int,
+    payload: CommandEnabled,
+    request: Request,
+    current_user: Annotated[dict, Depends(require_roles(["USUARIO"]))],
+    admin_repo: Annotated[AdminRepository, Depends(get_admin_repository)],
+) -> dict[str, Any]:
+    """Permite activar o desactivar un comando; el comprador sólo puede cambiar su unidad asignada."""
+    await verify_vehicle_authorization(vehicle_id, current_user, admin_repo)
+    service = _service(request)
+    try:
+        commands = await run_in_threadpool(service.list_commands, vehicle_id)
+        command = next((item for item in commands if int(item["id_comando"]) == command_id), None)
+        if command is None:
+            raise CommandNotFoundError(command_id)
+        updated = await run_in_threadpool(
+            service.update_command,
+            vehicle_id,
+            command_id,
+            command["nombre"],
+            int(command["codigo"]),
+            command.get("descripcion"),
+            payload.activo,
+        )
+        await run_in_threadpool(
+            admin_repo.log_audit,
+            current_user["id_usuario"],
+            current_user["username"],
+            current_user["rol"],
+            "CAMBIAR_ESTADO_COMANDO",
+            f"vehiculo:{vehicle_id}/comando:{command_id}",
+            f"Comando {command['nombre']} establecido en {'activo' if payload.activo else 'inactivo'} por el propietario.",
+        )
+        return updated
     except (VehicleNotFoundError, CommandNotFoundError) as exc:
         raise _raise_not_found(exc) from exc
     except pymysql.err.IntegrityError as exc:
