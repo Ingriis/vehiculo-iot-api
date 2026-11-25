@@ -27,6 +27,29 @@ class MovementService:
     def __init__(self, repository: VehicleRepository) -> None:
         self._repository = repository
 
+    def validate_control_state(self, vehicle_id: int, active_names: list[str]) -> None:
+        """Valida el vehículo y cada señal activa sin registrar un comando único."""
+        if not active_names:
+            return
+
+        with self._repository.transaction() as unit_of_work:
+            vehicle = unit_of_work.get_vehicle(vehicle_id)
+            if vehicle is None:
+                raise VehicleNotFoundError(vehicle_id)
+            if not bool(vehicle.get("activo", True)):
+                raise InactiveVehicleError(vehicle_id)
+
+            commands = unit_of_work.get_vehicle_commands(vehicle_id)
+            for name in active_names:
+                command = next(
+                    (item for item in commands if item.get("nombre") == name),
+                    None,
+                )
+                if command is None:
+                    raise CommandNotFoundError(name)
+                if not bool(command.get("activo", True)):
+                    raise InactiveCommandError(name)
+
     def register_movement(self, vehicle_id: int, command_id: int) -> dict[str, Any]:
         with self._repository.transaction() as unit_of_work:
             vehicle = unit_of_work.get_vehicle(vehicle_id)
