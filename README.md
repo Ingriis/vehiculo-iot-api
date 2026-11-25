@@ -80,9 +80,10 @@ La API integra las **21 rutas existentes de 4.1/4.2** y las **ampliaciones comer
 11. **Estado:** `GET /vehicles/{vehicle_id}/state` (último estado reportado).
 12. **Historial:** `GET /vehicles/{vehicle_id}/history` (máximo 10 movimientos recientes con origen).
 13. **Movimientos:** `POST /vehicles/{vehicle_id}/movements` (movimiento manual; persiste en historial en una sola transacción).
-14. **Demos:** Listar, crear, actualizar, eliminar y ejecutar en `/vehicles/{vehicle_id}/demos`.
-15. **Movimientos de Demo:** Administrar pasos ordenados en `/vehicles/{vehicle_id}/demos/{demo_id}/movements`.
-16. **Tiempo Real (WebSocket WSS):** `/ws/vehicles/{vehicle_id}` (emite `initial_state`, `movement`, `demo_started`, `demo_finished`, `demo_cancelled` y `demo_error`). Acepta `{"action": "cancel_demo"}`.
+14. **Estado de control manual:** `POST /vehicles/{vehicle_id}/control-state` envía el estado completo de las señales independientes (`forward`, `backward`, `left`, `right`) con un lease de seguridad. Requiere una dirección de tracción para activar el giro; todas las señales `false` detienen las salidas.
+15. **Demos:** Listar, crear, actualizar, eliminar y ejecutar en `/vehicles/{vehicle_id}/demos`.
+16. **Movimientos de Demo:** Administrar pasos ordenados en `/vehicles/{vehicle_id}/demos/{demo_id}/movements`.
+17. **Tiempo Real (WebSocket WSS):** `/ws/vehicles/{vehicle_id}` (emite `initial_state`, `movement`, `control_state`, `demo_started`, `demo_finished`, `demo_cancelled` y `demo_error`). Acepta `{"action": "cancel_demo"}`.
 
 ---
 

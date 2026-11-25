@@ -21,6 +21,14 @@ class MovementRequest(BaseModel):
     command_id: int = Field(gt=0, description="ID del comando del vehículo")
 
 
+class ControlStateRequest(BaseModel):
+    forward: bool = False
+    backward: bool = False
+    left: bool = False
+    right: bool = False
+    lease_ms: int = Field(default=1600, ge=500, le=2500)
+
+
 def _repository(request: Request) -> VehicleRepository:
     return request.app.state.repository
 
@@ -54,5 +62,56 @@ async def register_movement(
         **movement,
     })
     return movement
+
+
+@router.post("/{vehicle_id}/control-state", summary="Actualizar señales independientes de control")
+async def set_control_state(
+    vehicle_id: int, payload: ControlStateRequest, request: Request
+) -> dict:
+    if payload.forward and payload.backward:
+        raise HTTPException(status_code=422, detail="No se puede avanzar y retroceder al mismo tiempo.")
+    if payload.left and payload.right:
+        raise HTTPException(status_code=422, detail="No se puede girar a ambos lados al mismo tiempo.")
+    if (payload.left or payload.right) and not (payload.forward or payload.backward):
+        raise HTTPException(status_code=409, detail="Para girar, activa también avanzar o retroceder.")
+
+    active_names = []
+    if payload.forward:
+        active_names.append("AVANZAR")
+    if payload.backward:
+        active_names.append("RETROCEDER")
+    if payload.left:
+        active_names.append("GIRAR_IZQUIERDA")
+    if payload.right:
+        active_names.append("GIRAR_DERECHA")
+
+    service = MovementService(_repository(request))
+    try:
+        await run_in_threadpool(service.validate_control_state, vehicle_id, active_names)
+    except VehicleNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Vehículo no encontrado") from exc
+    except InactiveVehicleError as exc:
+        raise HTTPException(status_code=409, detail="El vehículo está inactivo") from exc
+    except CommandNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Comando no encontrado para este vehículo") from exc
+    except InactiveCommandError as exc:
+        raise HTTPException(status_code=409, detail="Una señal solicitada está deshabilitada") from exc
+
+    state = {
+        "forward": payload.forward,
+        "backward": payload.backward,
+        "left": payload.left,
+        "right": payload.right,
+        "lease_ms": payload.lease_ms,
+    }
+    event = {
+        "type": "control_state",
+        "origin": "MANUAL",
+        "id_vehiculo": vehicle_id,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        **state,
+    }
+    await request.app.state.connections.broadcast(vehicle_id, event)
+    return state
 
 
