@@ -64,13 +64,14 @@ La API integra las **21 rutas existentes de 4.1/4.2** y las **ampliaciones comer
 5. **Administración de Clientes:**
    * `GET /admin/clients`: Listado de compradores registrados.
    * `POST /admin/clients`: Alta de comprador con credenciales cifradas y rol `USUARIO`.
+   * `PUT /admin/clients/{client_id}`: Edita nombre y correo y activa o desactiva la cuenta (Solo Administrador).
 6. **Módulo «Mis Vehículos»:**
    * `GET /user/vehicles`: Devuelve **únicamente** los vehículos propiedad del comprador autenticado.
 7. **Invitados y Demostración Comercial:**
    * `GET /guest/catalog`: Catálogo público exclusivo de unidades de exhibición.
    * `POST /guest/sessions`: Solicita reserva temporal de 3 minutos (rechaza con `409 Conflict` si está ocupada).
    * `GET /guest/sessions/{token}/status`: Tiempo restante y comandos permitidos.
-   * `POST /guest/sessions/{token}/release`: Finaliza la prueba, libera la unidad y emite comando prioritario **DETENER**.
+   * `POST /guest/sessions/{token}/release`: Finaliza la reserva, libera la unidad y cancela una demo activa mediante el administrador WebSocket. Esta ruta no envía por sí sola una señal de apagado al hardware.
 8. **Auditoría del Sistema:**
    * `GET /admin/audit-logs`: Bitácora histórica con actor, rol, acción, recurso, fecha y resultado.
 
@@ -80,9 +81,9 @@ La API integra las **21 rutas existentes de 4.1/4.2** y las **ampliaciones comer
 11. **Estado:** `GET /vehicles/{vehicle_id}/state` (último estado reportado).
 12. **Historial:** `GET /vehicles/{vehicle_id}/history` (máximo 10 movimientos recientes con origen).
 13. **Movimientos:** `POST /vehicles/{vehicle_id}/movements` (movimiento manual; persiste en historial en una sola transacción).
-14. **Estado de control manual:** `POST /vehicles/{vehicle_id}/control-state` envía el estado completo de las señales independientes (`forward`, `backward`, `left`, `right`) con un lease de seguridad. Requiere una dirección de tracción para activar el giro; todas las señales `false` detienen las salidas.
+14. **Estado de control manual:** `POST /vehicles/{vehicle_id}/control-state` envía el estado completo de las señales independientes (`forward`, `backward`, `left`, `right`) y un `lease_ms` de seguridad (500–2500 ms; valor predeterminado 1600 ms). Rechaza avanzar y retroceder simultáneamente (`422`) o girar a ambos lados (`422`); para girar requiere avance o retroceso (`409`). Todas las señales `false` detienen las salidas.
 15. **Demos:** Listar, crear, actualizar, eliminar y ejecutar en `/vehicles/{vehicle_id}/demos`.
-16. **Movimientos de Demo:** Administrar pasos ordenados en `/vehicles/{vehicle_id}/demos/{demo_id}/movements`.
+16. **Movimientos de Demo:** `GET` lista los pasos; `POST /vehicles/{vehicle_id}/demos/{demo_id}/movements` agrega; `POST .../movements/{movement_id}/update` edita y `POST .../movements/{movement_id}` elimina. Los pasos requieren `id_comando > 0`, `orden > 0`, `duracion_ms >= 0` y `pausa_ms >= 0`; por eso `DETENER` puede guardarse con duración cero.
 17. **Tiempo Real (WebSocket WSS):** `/ws/vehicles/{vehicle_id}` (emite `initial_state`, `movement`, `control_state`, `demo_started`, `demo_finished`, `demo_cancelled` y `demo_error`). Acepta `{"action": "cancel_demo"}`.
 
 ---
