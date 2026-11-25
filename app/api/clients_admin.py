@@ -54,3 +54,40 @@ async def create_client(
         }
     except Exception as exc:
         raise HTTPException(status_code=409, detail=f"No se pudo crear el comprador: {str(exc)}")
+
+
+class ClientUpdate(BaseModel):
+    email: str = Field(max_length=120)
+    nombre_completo: str = Field(min_length=2, max_length=120)
+    activo: bool
+
+
+@router.put("/{client_id}", summary="Editar o desactivar un cliente comprador (Admin)")
+async def update_client(
+    client_id: int,
+    payload: ClientUpdate,
+    current_user: Annotated[dict, Depends(require_roles(["ADMINISTRADOR"]))],
+    repo: Annotated[AdminRepository, Depends(get_admin_repository)],
+) -> dict:
+    client = repo.get_user_by_id(client_id)
+    if not client or client.get("rol") != "USUARIO":
+        raise HTTPException(status_code=404, detail="Cliente no encontrado.")
+
+    try:
+        repo.update_client(client_id, payload.nombre_completo, payload.email, payload.activo)
+        action = "ACTUALIZAR_CLIENTE" if payload.activo else "DESACTIVAR_CLIENTE"
+        repo.log_audit(
+            current_user["id_usuario"], current_user["username"], "ADMINISTRADOR",
+            action, f"usuario:{client_id}",
+            f"Cliente {client['username']} actualizado; activo={payload.activo}",
+        )
+        return {
+            "id_usuario": client_id,
+            "username": client["username"],
+            "email": payload.email,
+            "nombre_completo": payload.nombre_completo,
+            "rol": "USUARIO",
+            "activo": payload.activo,
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=f"No se pudo actualizar el cliente: {str(exc)}")

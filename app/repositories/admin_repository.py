@@ -94,6 +94,14 @@ class AdminRepository:
         """
         return self._execute_commit(sql, (username, email, password_hash, nombre_completo, rol))
 
+    def update_client(self, user_id: int, nombre_completo: str, email: str, activo: bool) -> None:
+        sql = """
+        UPDATE usuarios
+        SET nombre_completo = %s, email = %s, activo = %s
+        WHERE id_usuario = %s AND rol = 'USUARIO'
+        """
+        self._execute_commit(sql, (nombre_completo, email, activo, user_id))
+
     # -------------------------------------------------------------------------
     # Catálogo de Modelos y Capacidades
     # -------------------------------------------------------------------------
